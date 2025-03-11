@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="wi_fi">扫描Wi-Fi</string>
+    <string name="ref_point_id">请输入参考点ID（整数）</string>
 </resources>
