@@ -27,6 +27,8 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -115,6 +117,15 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         List<ScanResult> results = wifiManager.getScanResults();
+
+        // 对扫描结果按信号强度排序：数值越大（接近0）表示信号越强
+        Collections.sort(results, new Comparator<ScanResult>() {
+            @Override
+            public int compare(ScanResult r1, ScanResult r2) {
+                return Integer.compare(r2.level, r1.level);
+            }
+        });
+
         scanResultsList.clear();
         for (ScanResult result : results) {
             String info = "SSID: " + result.SSID + "\nBSSID: " + result.BSSID + "\nRSSI: " + result.level;
