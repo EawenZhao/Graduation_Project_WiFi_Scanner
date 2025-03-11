@@ -6,18 +6,27 @@ android:layout_width="match_parent"
 android:layout_height="match_parent"
 android:padding="16dp">
 
-<Button
-    android:id="@+id/btnScan"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="@string/wi_fi"
-    android:layout_gravity="center_horizontal"
-    android:layout_marginTop="?attr/actionBarSize"
-    />
 
-<ListView
-    android:id="@+id/listView"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="16dp" />
+    <EditText
+        android:id="@+id/editTextRefPoint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="?actionBarSize"
+        android:hint="请输入参考点ID（整数）"
+        android:inputType="number" />
+
+    <Button
+        android:id="@+id/btnScan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="20dp"
+        android:text="@string/wi_fi" />
+
+    <ListView
+        android:id="@+id/listView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp" />
+
 </LinearLayout>
