@@ -2,11 +2,6 @@ package com.yinhuanzhao.graduation_project_wifi_scanner;
 
 import android.os.Bundle;
 
-import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -19,15 +14,14 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
-import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -36,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private WifiManager wifiManager;
     private ListView listView;
     private Button btnScan;
+    private EditText editTextRefPoint;
     private ArrayAdapter<String> adapter;
     private ArrayList<String> scanResultsList;
     private final int LOCATION_PERMISSION_REQUEST_CODE = 0;
@@ -59,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
 
         listView = findViewById(R.id.listView);
         btnScan = findViewById(R.id.btnScan);
+        editTextRefPoint = findViewById(R.id.editTextRefPoint);
+
         scanResultsList = new ArrayList<>();
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, scanResultsList);
         listView.setAdapter(adapter);
@@ -85,41 +82,50 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
         }
 
-        // 按钮点击事件，触发Wi-Fi扫描
+        // 按钮点击事件：先获取参考点ID，再启动扫描
         btnScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startWifiScan();
+                String refPointStr = editTextRefPoint.getText().toString().trim();
+                if (refPointStr.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "请输入参考点ID", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                try {
+                    final int refPoint = Integer.parseInt(refPointStr);
+                    startWifiScan(refPoint);
+                } catch (NumberFormatException e) {
+                    Toast.makeText(MainActivity.this, "参考点ID必须是整数", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
 
-    // 发起Wi-Fi扫描
-    private void startWifiScan() {
+    // 发起Wi-Fi扫描，同时传入参考点ID
+    private void startWifiScan(final int refPoint) {
         boolean success = wifiManager.startScan();
         if (!success) {
             Toast.makeText(this, "发起扫描失败", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(this, "正在扫描...", Toast.LENGTH_SHORT).show();
+            // 扫描结果会通过广播回调 onReceive() 处理
+            // 此处通过成员变量保存,记录当前参考点ID，以便在 getScanResults() 中使用
+            currentRefPoint = refPoint;
         }
     }
+
+    // 用于保存当前扫描时的参考点ID（由startWifiScan传入）
+    private int currentRefPoint = -1;
 
     // 处理扫描结果
     private void getScanResults() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         List<ScanResult> results = wifiManager.getScanResults();
 
-        // 对扫描结果按信号强度排序：数值越大（接近0）表示信号越强
-        Collections.sort(results, new Comparator<ScanResult>() {
+        // 对扫描结果按信号强度排序：数值越大（接近0）表示信号越强；自定义comparator
+        results.sort(new Comparator<ScanResult>() {
             @Override
             public int compare(ScanResult r1, ScanResult r2) {
                 return Integer.compare(r2.level, r1.level);
@@ -127,11 +133,25 @@ public class MainActivity extends AppCompatActivity {
         });
 
         scanResultsList.clear();
+
+        // 创建数据库帮助类对象
+        WiFiScanDatabaseHelper dbHelper = new WiFiScanDatabaseHelper(this);
+        // 获取当前参考点下次扫描的事件号（即第几次扫描）
+        int scanEvent = dbHelper.getNextScanEventForRefPoint(currentRefPoint);
+
+        // 将每个扫描结果存入数据库，同时更新ListView
         for (ScanResult result : results) {
-            String info = "SSID: " + result.SSID + "\nBSSID: " + result.BSSID + "\nRSSI: " + result.level;
+            String info = "SSID: " + result.SSID
+                    + "\nBSSID: " + result.BSSID
+                    + "\nRSSI: " + result.level;
             scanResultsList.add(info);
+            // 插入数据库记录
+            dbHelper.insertScanResult(currentRefPoint, scanEvent, result.SSID, result.BSSID, result.level);
         }
         adapter.notifyDataSetChanged();
+
+        // 提示当前参考点第几次扫描
+        Toast.makeText(this, "参考点 " + currentRefPoint + " 的第 " + scanEvent + " 次扫描已保存", Toast.LENGTH_SHORT).show();
     }
 
     // 处理权限请求回调
