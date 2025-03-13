@@ -56,7 +56,7 @@ public class DatabaseViewerActivity extends AppCompatActivity {
         refPointAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRefPoint.setAdapter(refPointAdapter);
 
-        // 2. 当参考点选择变化时，更新扫描次数选择器
+        // 2. 当参考点选择变化时，更新扫描次数选择器；以及选中参考点时的初次扫描次数选择器
         spinnerRefPoint.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
