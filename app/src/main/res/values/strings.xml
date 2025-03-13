@@ -2,4 +2,6 @@
     <string name="app_name">Graduation_Project_WiFi_Scanner</string>
     <string name="wi_fi">扫描Wi-Fi</string>
     <string name="ref_point_id">请输入参考点ID（整数）</string>
+    <string name="choose_ref_point">选择参考点</string>
+    <string name="choose_scan_times">选择扫描次数</string>
 </resources>
