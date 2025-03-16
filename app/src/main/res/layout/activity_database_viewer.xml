@@ -1,34 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="16dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:paddingTop="?actionBarSize"
+    android:paddingBottom="16dp"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- 选择参考点 -->
+    <!-- 水平 Guideline：10%位置 -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline10"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.1" />
+
+    <!-- 水平 Guideline：20%位置 -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline20"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.2" />
+
+    <!-- 水平 Guideline：90%位置 -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline90"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.9" />
+
+    <!-- 参考点选择 Spinner，占顶部 10% -->
     <Spinner
         android:id="@+id/spinnerRefPoint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="?actionBarSize"
-        android:minHeight="48dp"
-        android:prompt="@string/choose_ref_point"/>
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:prompt="@string/choose_ref_point"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/guideline10"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
 
-    <!-- 选择扫描次数 -->
+    <!-- 扫描次数选择 Spinner，占 10%-20% 区域 -->
     <Spinner
         android:id="@+id/spinnerScanEvent"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:minHeight="48dp"
-        android:prompt="@string/choose_scan_times" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:prompt="@string/choose_scan_times"
+        app:layout_constraintTop_toBottomOf="@id/guideline10"
+        app:layout_constraintBottom_toTopOf="@id/guideline20"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
 
-    <!-- 显示扫描记录的ListView -->
+    <!-- 显示扫描记录的 ListView，占 20%-90% 区域 -->
     <ListView
         android:id="@+id/listViewData"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="16dp" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/guideline20"
+        app:layout_constraintBottom_toTopOf="@id/guideline90"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
 
-</LinearLayout>
+    <!-- 清除全部数据按钮，占底部 10% -->
+    <Button
+        android:id="@+id/btnClearData"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="清除全部数据"
+        android:textColor="@android:color/white"
+        android:background="@android:color/holo_red_dark"
+        app:layout_constraintTop_toBottomOf="@id/guideline90"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

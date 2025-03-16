@@ -73,4 +73,12 @@ public class WiFiScanDatabaseHelper extends SQLiteOpenHelper {
         db.close();
         return nextEvent;
     }
+
+    public int clearAllData() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        int rowsDeleted = db.delete(TABLE_NAME, null, null);
+        db.close();
+        return rowsDeleted;
+    }
+
 }

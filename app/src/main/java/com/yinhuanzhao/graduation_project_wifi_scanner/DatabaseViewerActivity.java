@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.Toast;
@@ -27,6 +28,9 @@ public class DatabaseViewerActivity extends AppCompatActivity {
     // 存放所选参考点下所有的扫描次数（scan_event）
     private ArrayList<Integer> scanEventList;
 
+    // 添加清除按钮引用
+    private Button btnClearData;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,6 +44,35 @@ public class DatabaseViewerActivity extends AppCompatActivity {
         listViewData.setAdapter(listAdapter);
 
         dbHelper = new WiFiScanDatabaseHelper(this);
+
+
+        // 清除按钮点击事件
+        btnClearData.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                int deleted = dbHelper.clearAllData();
+                Toast.makeText(DatabaseViewerActivity.this, "清除 " + deleted + " 条记录", Toast.LENGTH_SHORT).show();
+
+                // 刷新界面数据
+                refPointList = getDistinctRefPoints();
+                if (refPointList.isEmpty()) {
+                    spinnerRefPoint.setAdapter(null);
+                    spinnerScanEvent.setAdapter(null);
+                    dataList.clear();
+                    listAdapter.notifyDataSetChanged();
+                } else {
+                    // 重新填充参考点选择器
+                    ArrayList<String> refPointStrList = new ArrayList<>();
+                    for (int ref : refPointList) {
+                        refPointStrList.add("参考点: " + ref);
+                    }
+                    ArrayAdapter<String> refPointAdapter = new ArrayAdapter<>(DatabaseViewerActivity.this, android.R.layout.simple_spinner_item, refPointStrList);
+                    refPointAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    spinnerRefPoint.setAdapter(refPointAdapter);
+                }
+            }
+        });
 
         // 1. 查询数据库中所有不同的参考点ID
         refPointList = getDistinctRefPoints();
