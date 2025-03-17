@@ -1,8 +1,10 @@
-package com.yinhuanzhao.graduation_project_wifi_scanner;
+package com.yinhuanzhao.graduation_project_wifi_scanner.fragment;
 
 import android.database.Cursor;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -10,15 +12,21 @@ import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
+import com.yinhuanzhao.graduation_project_wifi_scanner.R;
+import com.yinhuanzhao.graduation_project_wifi_scanner.WiFiScanDatabaseHelper;
 
 import java.util.ArrayList;
 
-public class DatabaseViewerActivity extends AppCompatActivity {
+public class DatabaseFragment extends Fragment {
 
     private Spinner spinnerRefPoint;
     private Spinner spinnerScanEvent;
     private ListView listViewData;
+    private Button btnClearData;
     private ArrayAdapter<String> listAdapter;
     private ArrayList<String> dataList;
     private WiFiScanDatabaseHelper dbHelper;
@@ -28,68 +36,45 @@ public class DatabaseViewerActivity extends AppCompatActivity {
     // 存放所选参考点下所有的扫描次数（scan_event）
     private ArrayList<Integer> scanEventList;
 
-    // 添加清除按钮引用
-    private Button btnClearData;
+    public DatabaseFragment() {
+        // Required empty public constructor
+    }
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_database_viewer);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        // 加载布局文件 fragment_database.xml
+        View view = inflater.inflate(R.layout.fragment_database, container, false);
 
-        spinnerRefPoint = findViewById(R.id.spinnerRefPoint);
-        spinnerScanEvent = findViewById(R.id.spinnerScanEvent);
-        listViewData = findViewById(R.id.listViewData);
+        // 绑定布局控件
+        spinnerRefPoint = view.findViewById(R.id.spinnerRefPoint);
+        spinnerScanEvent = view.findViewById(R.id.spinnerScanEvent);
+        listViewData = view.findViewById(R.id.listViewData);
+        btnClearData = view.findViewById(R.id.btnClearData);
+
         dataList = new ArrayList<>();
-        listAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, dataList);
+        listAdapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, dataList);
         listViewData.setAdapter(listAdapter);
 
-        dbHelper = new WiFiScanDatabaseHelper(this);
+        dbHelper = new WiFiScanDatabaseHelper(getActivity());
 
-
-        // 清除按钮点击事件
+        // 清除按钮点击事件：清除数据库中所有记录，并刷新界面数据
         btnClearData.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
                 int deleted = dbHelper.clearAllData();
-                Toast.makeText(DatabaseViewerActivity.this, "清除 " + deleted + " 条记录", Toast.LENGTH_SHORT).show();
-
-                // 刷新界面数据
-                refPointList = getDistinctRefPoints();
-                if (refPointList.isEmpty()) {
-                    spinnerRefPoint.setAdapter(null);
-                    spinnerScanEvent.setAdapter(null);
-                    dataList.clear();
-                    listAdapter.notifyDataSetChanged();
-                } else {
-                    // 重新填充参考点选择器
-                    ArrayList<String> refPointStrList = new ArrayList<>();
-                    for (int ref : refPointList) {
-                        refPointStrList.add("参考点: " + ref);
-                    }
-                    ArrayAdapter<String> refPointAdapter = new ArrayAdapter<>(DatabaseViewerActivity.this, android.R.layout.simple_spinner_item, refPointStrList);
-                    refPointAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                    spinnerRefPoint.setAdapter(refPointAdapter);
-                }
+                Toast.makeText(getActivity(), "清除 " + deleted + " 条记录", Toast.LENGTH_SHORT).show();
+                refreshRefPointSpinner();
             }
         });
 
-        // 1. 查询数据库中所有不同的参考点ID
-        refPointList = getDistinctRefPoints();
-        if (refPointList.isEmpty()) {
-            Toast.makeText(this, "暂无任何参考点数据", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        // 将参考点转换为字符串数组，例如 "参考点: 1"
-        ArrayList<String> refPointStrList = new ArrayList<>();
-        for (int ref : refPointList) {
-            refPointStrList.add("参考点: " + ref);
-        }
-        ArrayAdapter<String> refPointAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, refPointStrList);
-        refPointAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerRefPoint.setAdapter(refPointAdapter);
+        // 初始化参考点选择器
+        refreshRefPointSpinner();
 
-        // 2. 当参考点选择变化时，更新扫描次数选择器；以及选中参考点时的初次扫描次数选择器
+        // 当参考点选择变化时，更新扫描次数选择器
         spinnerRefPoint.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -97,7 +82,7 @@ public class DatabaseViewerActivity extends AppCompatActivity {
                 // 查询该参考点下所有不同的扫描事件号
                 scanEventList = getScanEventList(selectedRefPoint);
                 if (scanEventList.isEmpty()) {
-                    Toast.makeText(DatabaseViewerActivity.this, "该参考点暂无扫描记录", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "该参考点暂无扫描记录", Toast.LENGTH_SHORT).show();
                     dataList.clear();
                     listAdapter.notifyDataSetChanged();
                     spinnerScanEvent.setAdapter(null);
@@ -107,7 +92,7 @@ public class DatabaseViewerActivity extends AppCompatActivity {
                 for (int event : scanEventList) {
                     scanEventStrList.add("第 " + event + " 次扫描");
                 }
-                ArrayAdapter<String> scanEventAdapter = new ArrayAdapter<>(DatabaseViewerActivity.this, android.R.layout.simple_spinner_item, scanEventStrList);
+                ArrayAdapter<String> scanEventAdapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_spinner_item, scanEventStrList);
                 scanEventAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerScanEvent.setAdapter(scanEventAdapter);
             }
@@ -118,7 +103,7 @@ public class DatabaseViewerActivity extends AppCompatActivity {
             }
         });
 
-        // 3. 当扫描次数选择变化时，根据所选参考点和扫描次数更新ListView
+        // 当扫描次数选择变化时，根据所选参考点和扫描次数更新 ListView 数据
         spinnerScanEvent.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -132,6 +117,28 @@ public class DatabaseViewerActivity extends AppCompatActivity {
                 // 无操作
             }
         });
+
+        return view;
+    }
+
+    // 刷新参考点选择器
+    private void refreshRefPointSpinner() {
+        refPointList = getDistinctRefPoints();
+        if (refPointList.isEmpty()) {
+            Toast.makeText(getActivity(), "暂无任何参考点数据", Toast.LENGTH_SHORT).show();
+            spinnerRefPoint.setAdapter(null);
+            spinnerScanEvent.setAdapter(null);
+            dataList.clear();
+            listAdapter.notifyDataSetChanged();
+        } else {
+            ArrayList<String> refPointStrList = new ArrayList<>();
+            for (int ref : refPointList) {
+                refPointStrList.add("参考点: " + ref);
+            }
+            ArrayAdapter<String> refPointAdapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_spinner_item, refPointStrList);
+            refPointAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerRefPoint.setAdapter(refPointAdapter);
+        }
     }
 
     // 查询数据库，获取所有不同的参考点ID
