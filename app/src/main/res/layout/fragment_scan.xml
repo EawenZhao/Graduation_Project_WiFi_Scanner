@@ -10,6 +10,7 @@
         android:id="@+id/editTextRefPoint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="?actionBarSize"
         android:hint="请输入参考点ID"
         android:inputType="number" />
 

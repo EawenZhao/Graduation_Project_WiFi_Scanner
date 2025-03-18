@@ -11,7 +11,6 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -26,13 +25,13 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.yinhuanzhao.graduation_project_wifi_scanner.R;
+import com.yinhuanzhao.graduation_project_wifi_scanner.WiFiScanDatabaseHelper;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 public class ScanFragment extends Fragment {
-
     private WifiManager wifiManager;
     private EditText editTextRefPoint;
     private Button btnScan;
@@ -42,6 +41,7 @@ public class ScanFragment extends Fragment {
     // 保存当前扫描的参考点ID，初始值为 -1 表示未设置
     private int currentRefPoint = -1;
     private final int LOCATION_PERMISSION_REQUEST_CODE = 0;
+    private WiFiScanDatabaseHelper dbHelper;  // 新增：数据库帮助类
 
     // 广播接收器：接收到扫描结果后处理数据
     private final BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
@@ -61,7 +61,7 @@ public class ScanFragment extends Fragment {
     };
 
     public ScanFragment() {
-        // Required empty public constructor
+        // 必须的空构造函数
     }
 
     @Override
@@ -92,27 +92,26 @@ public class ScanFragment extends Fragment {
             wifiManager.setWifiEnabled(true);
         }
 
+        // 初始化数据库帮助类
+        dbHelper = new WiFiScanDatabaseHelper(getActivity());
+
         // 检查权限，确保扫描需要的定位权限已经被授予
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
         }
 
         // 按钮点击事件：先获取用户输入的参考点ID，再触发 Wi-Fi 扫描
-        btnScan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                String refPointStr = editTextRefPoint.getText().toString().trim();
-                if (refPointStr.isEmpty()) {
-                    Toast.makeText(getActivity(), "请输入参考点ID", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                try {
-                    int refPoint = Integer.parseInt(refPointStr);
-                    startWifiScan(refPoint);
-                } catch (NumberFormatException e) {
-                    Toast.makeText(getActivity(), "参考点ID必须是整数", Toast.LENGTH_SHORT).show();
-                }
+        btnScan.setOnClickListener(v -> {
+            String refPointStr = editTextRefPoint.getText().toString().trim();
+            if (refPointStr.isEmpty()) {
+                Toast.makeText(getActivity(), "请输入参考点ID", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                int refPoint = Integer.parseInt(refPointStr);
+                startWifiScan(refPoint);
+            } catch (NumberFormatException e) {
+                Toast.makeText(getActivity(), "参考点ID必须是整数", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -146,7 +145,7 @@ public class ScanFragment extends Fragment {
         }
     }
 
-    // 处理扫描结果
+    // 处理扫描结果，并将结果存入数据库
     private void getScanResults() {
         // 再次检查权限
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -155,24 +154,25 @@ public class ScanFragment extends Fragment {
         List<ScanResult> results = wifiManager.getScanResults();
 
         // 按信号强度排序：RSSI 数值越大（接近0）表示信号越强
-        results.sort(new Comparator<ScanResult>() {
-            @Override
-            public int compare(ScanResult r1, ScanResult r2) {
-                return Integer.compare(r2.level, r1.level);
-            }
-        });
+        results.sort((r1, r2) -> Integer.compare(r2.level, r1.level));
 
         // 清空原有结果并添加新结果
         scanResultsList.clear();
+
+        // 获取当前参考点下次扫描的事件号（即已有最大扫描次数+1）
+        int scanEvent = dbHelper.getNextScanEventForRefPoint(currentRefPoint);
+
+        // 遍历扫描结果，更新列表，并存入数据库
         for (ScanResult result : results) {
             String info = "SSID: " + result.SSID
                     + "\nBSSID: " + result.BSSID
                     + "\nRSSI: " + result.level;
             scanResultsList.add(info);
+            dbHelper.insertScanResult(currentRefPoint, scanEvent, result.SSID, result.BSSID, result.level);
         }
         adapter.notifyDataSetChanged();
 
-        // 提示用户扫描完成
-        Toast.makeText(getActivity(), "参考点 " + currentRefPoint + " 的扫描数据已更新", Toast.LENGTH_SHORT).show();
+        // 提示用户扫描完成，并显示保存的扫描次数
+        Toast.makeText(getActivity(), "参考点 " + currentRefPoint + " 的第 " + scanEvent + " 次扫描已保存", Toast.LENGTH_SHORT).show();
     }
 }

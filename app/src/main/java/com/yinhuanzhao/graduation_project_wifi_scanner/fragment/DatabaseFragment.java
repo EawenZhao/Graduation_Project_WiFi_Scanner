@@ -22,7 +22,6 @@ import com.yinhuanzhao.graduation_project_wifi_scanner.WiFiScanDatabaseHelper;
 import java.util.ArrayList;
 
 public class DatabaseFragment extends Fragment {
-
     private Spinner spinnerRefPoint;
     private Spinner spinnerScanEvent;
     private ListView listViewData;
@@ -37,18 +36,15 @@ public class DatabaseFragment extends Fragment {
     private ArrayList<Integer> scanEventList;
 
     public DatabaseFragment() {
-        // Required empty public constructor
+        // 必须的空构造函数
     }
 
-    @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        // 加载布局文件 fragment_database.xml
+                             ViewGroup container,
+                             Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_database, container, false);
 
-        // 绑定布局控件
         spinnerRefPoint = view.findViewById(R.id.spinnerRefPoint);
         spinnerScanEvent = view.findViewById(R.id.spinnerScanEvent);
         listViewData = view.findViewById(R.id.listViewData);
@@ -61,14 +57,10 @@ public class DatabaseFragment extends Fragment {
         dbHelper = new WiFiScanDatabaseHelper(getActivity());
 
         // 清除按钮点击事件：清除数据库中所有记录，并刷新界面数据
-        btnClearData.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                int deleted = dbHelper.clearAllData();
-                Toast.makeText(getActivity(), "清除 " + deleted + " 条记录", Toast.LENGTH_SHORT).show();
-                refreshRefPointSpinner();
-            }
+        btnClearData.setOnClickListener(v -> {
+            int deleted = dbHelper.clearAllData();
+            Toast.makeText(getActivity(), "清除 " + deleted + " 条记录", Toast.LENGTH_SHORT).show();
+            refreshRefPointSpinner();
         });
 
         // 初始化参考点选择器
@@ -204,4 +196,12 @@ public class DatabaseFragment extends Fragment {
         }
         listAdapter.notifyDataSetChanged();
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 重新刷新参考点、扫描次数以及 ListView 数据
+        refreshRefPointSpinner();
+    }
+
 }
