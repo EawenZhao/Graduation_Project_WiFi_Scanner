@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_scan"
+        android:icon="@drawable/ic_scan"
+        android:title="扫描数据" />
+    <item
+        android:id="@+id/navigation_database"
+        android:icon="@drawable/ic_database"
+        android:title="查看指纹库" />
+</menu>

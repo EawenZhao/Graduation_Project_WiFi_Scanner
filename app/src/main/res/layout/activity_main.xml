@@ -5,26 +5,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- AppBarLayout 包含 TabLayout -->
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:tabIndicatorColor="@android:color/white"
-            app:tabSelectedTextColor="@android:color/white"
-            app:tabTextColor="@android:color/darker_gray" />
-    </com.google.android.material.appbar.AppBarLayout>
-
     <!-- ViewPager 用于容纳两个 Fragment -->
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginBottom="56dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <!-- 底部导航栏 -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:menu="@menu/bottom_nav_menu" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

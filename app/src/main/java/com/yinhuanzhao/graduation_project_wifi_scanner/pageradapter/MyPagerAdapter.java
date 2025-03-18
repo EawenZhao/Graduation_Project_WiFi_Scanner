@@ -1,7 +1,7 @@
 package com.yinhuanzhao.graduation_project_wifi_scanner.pageradapter;
 
-import android.app.Fragment;
-import android.app.FragmentManager;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
