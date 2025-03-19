@@ -3,6 +3,7 @@ package com.yinhuanzhao.graduation_project_wifi_scanner;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 import androidx.viewpager.widget.ViewPager;
 
 
@@ -29,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
         pagerAdapter = new MyPagerAdapter(getSupportFragmentManager());
         pagerAdapter.addFragment(new ScanFragment(), "扫描数据");
         pagerAdapter.addFragment(new DatabaseFragment(), "查看指纹库");
+
         viewPager.setAdapter(pagerAdapter);
 
         // ViewPager 页面变化时更新 BottomNavigationView 的选中状态

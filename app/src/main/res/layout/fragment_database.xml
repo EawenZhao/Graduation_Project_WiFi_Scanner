@@ -65,17 +65,32 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent" />
 
-    <!-- 清除全部数据按钮，占底部 10% -->
-    <Button
-        android:id="@+id/btnClearData"
+    <LinearLayout
+        android:id="@+id/buttonPanel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="清除全部数据"
-        android:textColor="@android:color/white"
-        android:background="@android:color/holo_red_dark"
+        android:orientation="horizontal"
         app:layout_constraintTop_toBottomOf="@id/guideline90"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
+        app:layout_constraintRight_toRightOf="parent">
+
+        <Button
+            android:id="@+id/btnClearData"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="清除全部数据"
+            android:textColor="@android:color/white"
+            android:background="@android:color/holo_red_dark" />
+
+        <Button
+            android:id="@+id/btnGenerateFingerprint"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="生成指纹库"
+            android:textColor="@android:color/white"
+            android:background="@android:color/holo_blue_dark" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
