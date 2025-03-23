@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public class ScanFragment extends Fragment {
+    private static final int MIN_RSSI_THRESHOLD = -74;
     private WifiManager wifiManager;
     private EditText editTextRefPoint;
     private Button btnScan;
@@ -162,15 +163,18 @@ public class ScanFragment extends Fragment {
         // 获取当前参考点下次扫描的事件号（即已有最大扫描次数+1）
         int scanEvent = dbHelper.getNextScanEventForRefPoint(currentRefPoint);
 
-        // 遍历扫描结果，更新列表，并存入数据库
         for (ScanResult result : results) {
-            String info = "SSID: " + result.SSID
-                    + "\nBSSID: " + result.BSSID
-                    + "\nRSSI: " + result.level;
-            scanResultsList.add(info);
-            dbHelper.insertScanResult(currentRefPoint, scanEvent, result.SSID, result.BSSID, result.level);
+            // 如果扫描到的 WiFi 信号强度大于等于阈值，则加入结果列表
+            if (result.level >= MIN_RSSI_THRESHOLD) {
+                String info = "SSID: " + result.SSID
+                        + "\nBSSID: " + result.BSSID
+                        + "\nRSSI: " + result.level;
+                scanResultsList.add(info);
+                dbHelper.insertScanResult(currentRefPoint, scanEvent, result.SSID, result.BSSID, result.level);
+            }
         }
         adapter.notifyDataSetChanged();
+
 
         // 提示用户扫描完成，并显示保存的扫描次数
         Toast.makeText(getActivity(), "参考点 " + currentRefPoint + " 的第 " + scanEvent + " 次扫描已保存", Toast.LENGTH_SHORT).show();

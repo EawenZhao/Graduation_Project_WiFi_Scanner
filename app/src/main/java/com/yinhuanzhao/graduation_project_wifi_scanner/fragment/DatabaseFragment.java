@@ -1,6 +1,7 @@
 package com.yinhuanzhao.graduation_project_wifi_scanner.fragment;
 
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.LayoutInflater;
@@ -17,7 +18,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.yinhuanzhao.graduation_project_wifi_scanner.R;
 import com.yinhuanzhao.graduation_project_wifi_scanner.WiFiScanDatabaseHelper;
-import com.yinhuanzhao.graduation_project_wifi_scanner.util.DataProcessor;
+import com.yinhuanzhao.graduation_project_wifi_scanner.weibull.WeibullEstimator;
+import com.yinhuanzhao.graduation_project_wifi_scanner.weibull.WeibullParameters;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,7 +30,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class DatabaseFragment extends Fragment {
 
@@ -207,7 +209,6 @@ public class DatabaseFragment extends Fragment {
     }
 
 
-    // 生成指纹库，采用Min-Max归一化处理RSSI数据
     private void generateFingerprintLibrary() {
         ArrayList<Integer> refPoints = getDistinctRefPoints();
         JSONArray fingerprintArray = new JSONArray();
@@ -216,29 +217,50 @@ public class DatabaseFragment extends Fragment {
             JSONObject refPointObject = new JSONObject();
             try {
                 refPointObject.put("ref_point", refPoint);
-                // 查询该参考点下每个AP的平均RSSI
-                Cursor cursor = dbHelper.getReadableDatabase().rawQuery(
-                        "SELECT " + WiFiScanDatabaseHelper.COLUMN_BSSID + ", AVG(" + WiFiScanDatabaseHelper.COLUMN_RSSI + ") as avg_rssi " +
-                                "FROM " + WiFiScanDatabaseHelper.TABLE_NAME +
-                                " WHERE " + WiFiScanDatabaseHelper.COLUMN_REF_POINT + " = ? " +
-                                "GROUP BY " + WiFiScanDatabaseHelper.COLUMN_BSSID,
-                        new String[]{String.valueOf(refPoint)});
 
-                // 将结果存入临时HashMap
-                HashMap<String, Double> fingerprintMap = new HashMap<>();
+                // 查询该参考点下所有 AP 的 RSSI 数据
+                SQLiteDatabase db = dbHelper.getReadableDatabase();
+                Cursor cursor = db.rawQuery(
+                        "SELECT " + WiFiScanDatabaseHelper.COLUMN_BSSID + ", " + WiFiScanDatabaseHelper.COLUMN_RSSI +
+                                " FROM " + WiFiScanDatabaseHelper.TABLE_NAME +
+                                " WHERE " + WiFiScanDatabaseHelper.COLUMN_REF_POINT + " = ?",
+                        new String[]{String.valueOf(refPoint)}
+                );
+
+                // 将同一 AP 的 RSSI 值分组存入 Map 中
+                Map<String, ArrayList<Double>> samplesMap = new HashMap<>();
                 if (cursor != null) {
                     while (cursor.moveToNext()) {
                         String bssid = cursor.getString(0);
-                        double avgRssi = cursor.getDouble(1);
-                        fingerprintMap.put(bssid, avgRssi);
+                        double rssi = cursor.getDouble(1);
+                        if (!samplesMap.containsKey(bssid)) {
+                            samplesMap.put(bssid, new ArrayList<Double>());
+                        }
+                        samplesMap.get(bssid).add(rssi);
                     }
                     cursor.close();
                 }
-                // 对该指纹向量进行Min-Max归一化处理
-                HashMap<String, Double> normalizedFingerprint = DataProcessor.minMaxNormalize(fingerprintMap);
+                db.close();
+
+                // 针对每个 AP 的 RSSI 样本，计算 Weibull 模型参数
                 JSONObject fingerprintObject = new JSONObject();
-                for (Map.Entry<String, Double> entry : normalizedFingerprint.entrySet()) {
-                    fingerprintObject.put(entry.getKey(), entry.getValue());
+                for (Map.Entry<String, ArrayList<Double>> entry : samplesMap.entrySet()) {
+                    String bssid = entry.getKey();
+                    ArrayList<Double> rssiList = entry.getValue();
+                    double[] samples = new double[rssiList.size()];
+                    for (int i = 0; i < rssiList.size(); i++) {
+                        samples[i] = rssiList.get(i);
+                    }
+                    // 使用 locater 包中的 WeibullEstimator 计算参数
+                    WeibullParameters params = WeibullEstimator.estimate(samples);
+
+                    // 构造 JSON 对象存储 Weibull 参数
+                    JSONObject paramObj = new JSONObject();
+                    paramObj.put("lambda", params.getLambda());
+                    paramObj.put("k", params.getK());
+                    paramObj.put("theta", params.getTheta());
+
+                    fingerprintObject.put(bssid, paramObj);
                 }
                 refPointObject.put("fingerprint", fingerprintObject);
                 fingerprintArray.put(refPointObject);
@@ -247,11 +269,9 @@ public class DatabaseFragment extends Fragment {
             }
         }
 
-        // 写入文件到SD卡
+        // 写入 JSON 指纹库到外部存储
         try {
             if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                // 改为使用应用专属目录：getExternalFilesDir(null) 返回的是
-                // /storage/emulated/0/Android/data/your.package.name/files/ 目录
                 File file = new File(requireActivity().getExternalFilesDir(null), "fingerprint_library.json");
                 FileOutputStream fos = new FileOutputStream(file);
                 fos.write(fingerprintArray.toString(4).getBytes());
@@ -260,10 +280,10 @@ public class DatabaseFragment extends Fragment {
             } else {
                 Toast.makeText(getActivity(), "外部存储不可用", Toast.LENGTH_SHORT).show();
             }
-
         } catch (IOException | JSONException e) {
             Toast.makeText(getActivity(), "写入文件失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
     }
+
 }
