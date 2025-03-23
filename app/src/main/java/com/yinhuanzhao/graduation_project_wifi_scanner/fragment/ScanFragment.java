@@ -9,12 +9,11 @@ import android.content.pm.PackageManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-
+import android.os.Handler;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,33 +21,57 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
-
 import com.yinhuanzhao.graduation_project_wifi_scanner.R;
 import com.yinhuanzhao.graduation_project_wifi_scanner.WiFiScanDatabaseHelper;
-
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Comparator;
 
 public class ScanFragment extends Fragment {
+
     private static final int MIN_RSSI_THRESHOLD = -74;
     private WifiManager wifiManager;
     private EditText editTextRefPoint;
     private Button btnScan;
+    private ProgressBar progressBar;
     private ListView listView;
     private ArrayAdapter<String> adapter;
     private ArrayList<String> scanResultsList;
-    // 保存当前扫描的参考点ID，初始值为 -1 表示未设置
+    // 当前扫描参考点，初始值 -1 表示未设置
     private int currentRefPoint = -1;
     private final int LOCATION_PERMISSION_REQUEST_CODE = 0;
-    private WiFiScanDatabaseHelper dbHelper;  // 新增：数据库帮助类
+    private WiFiScanDatabaseHelper dbHelper;
+
+    // 用于自动扫描的计数和定时器
+    private final int TOTAL_SCANS = 30;
+    private int currentScanCount = 0;
+    private Handler scanHandler = new Handler();
+
+    // 每隔10秒执行一次扫描，共扫描30次
+    private Runnable scanRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (currentScanCount < TOTAL_SCANS) {
+                // 发起一次扫描
+                startWifiScan(currentRefPoint);
+                currentScanCount++;
+                progressBar.setProgress(currentScanCount);
+                // 10秒后继续扫描
+                scanHandler.postDelayed(this, 10000);
+            } else {
+                // 扫描结束，恢复按钮可点击状态
+                btnScan.setEnabled(true);
+                Toast.makeText(getActivity(), "扫描完成", Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
 
     // 广播接收器：接收到扫描结果后处理数据
     private final BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // 判断当前参考点是否有效，若为 -1 则不处理扫描结果
             if (currentRefPoint == -1) {
                 return;
             }
@@ -61,58 +84,63 @@ public class ScanFragment extends Fragment {
         }
     };
 
-    public ScanFragment() {
-        // 必须的空构造函数
-    }
-
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // 加载 fragment_scan.xml 布局
         View view = inflater.inflate(R.layout.fragment_scan, container, false);
 
-        // 绑定布局控件
         editTextRefPoint = view.findViewById(R.id.editTextRefPoint);
         btnScan = view.findViewById(R.id.btnScan);
+        progressBar = view.findViewById(R.id.progressBar);
         listView = view.findViewById(R.id.listView);
 
-        // 初始化数据列表和适配器
         scanResultsList = new ArrayList<>();
         adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, scanResultsList);
         listView.setAdapter(adapter);
 
-        // 获取 Wi-Fi 服务
         wifiManager = (WifiManager) getActivity().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifiManager == null) {
             Toast.makeText(getActivity(), "WiFi服务不可用", Toast.LENGTH_LONG).show();
             return view;
         }
-        // 如果 Wi-Fi 未开启，则自动开启
         if (!wifiManager.isWifiEnabled()) {
             Toast.makeText(getActivity(), "WiFi未开启，正在开启...", Toast.LENGTH_LONG).show();
             wifiManager.setWifiEnabled(true);
         }
-
-        // 初始化数据库帮助类
         dbHelper = new WiFiScanDatabaseHelper(getActivity());
 
-        // 检查权限，确保扫描需要的定位权限已经被授予
-        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+        // 检查权限
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
         }
 
-        // 按钮点击事件：先获取用户输入的参考点ID，再触发 Wi-Fi 扫描
-        btnScan.setOnClickListener(v -> {
-            String refPointStr = editTextRefPoint.getText().toString().trim();
-            if (refPointStr.isEmpty()) {
-                Toast.makeText(getActivity(), "请输入参考点ID", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            try {
-                int refPoint = Integer.parseInt(refPointStr);
-                startWifiScan(refPoint);
-            } catch (NumberFormatException e) {
-                Toast.makeText(getActivity(), "参考点ID必须是整数", Toast.LENGTH_SHORT).show();
+        // 初始化进度条
+        progressBar.setMax(TOTAL_SCANS);
+        progressBar.setProgress(0);
+
+        // 点击按钮时启动定时扫描
+        btnScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String refPointStr = editTextRefPoint.getText().toString().trim();
+                if (refPointStr.isEmpty()) {
+                    Toast.makeText(getActivity(), "请输入参考点ID", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                try {
+                    int refPoint = Integer.parseInt(refPointStr);
+                    currentRefPoint = refPoint;
+                    // 开始扫描前重置计数及进度条，禁用按钮
+                    currentScanCount = 0;
+                    progressBar.setProgress(0);
+                    btnScan.setEnabled(false);
+                    // 立即开始扫描
+                    scanHandler.post(scanRunnable);
+                } catch (NumberFormatException e) {
+                    Toast.makeText(getActivity(), "参考点ID必须是整数", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -122,7 +150,7 @@ public class ScanFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // 注册广播接收器，监听 Wi-Fi 扫描结果
+        // 注册扫描结果广播接收器
         IntentFilter filter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         getActivity().registerReceiver(wifiScanReceiver, filter);
     }
@@ -130,53 +158,48 @@ public class ScanFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        // 注销广播接收器
+        // 移除定时任务，防止内存泄漏
+        scanHandler.removeCallbacks(scanRunnable);
         getActivity().unregisterReceiver(wifiScanReceiver);
     }
 
-    // 发起 Wi-Fi 扫描，同时传入参考点ID，并更新当前的 currentRefPoint
+    // 发起一次 Wi-Fi 扫描
     private void startWifiScan(int refPoint) {
         boolean success = wifiManager.startScan();
         if (!success) {
             Toast.makeText(getActivity(), "发起扫描失败", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(getActivity(), "正在扫描...", Toast.LENGTH_SHORT).show();
-            // 保存当前参考点ID，后续处理扫描结果时会用到
-            currentRefPoint = refPoint;
         }
     }
 
-    // 处理扫描结果，并将结果存入数据库
+    // 处理扫描结果，将符合条件的数据存入数据库并更新列表
     private void getScanResults() {
-        // 再次检查权限
-        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         List<ScanResult> results = wifiManager.getScanResults();
+        results.sort(new Comparator<ScanResult>() {
+            @Override
+            public int compare(ScanResult r1, ScanResult r2) {
+                return Integer.compare(r2.level, r1.level);
+            }
+        });
 
-        // 按信号强度排序：RSSI 数值越大（接近0）表示信号越强
-        results.sort((r1, r2) -> Integer.compare(r2.level, r1.level));
-
-        // 清空原有结果并添加新结果
         scanResultsList.clear();
-
-        // 获取当前参考点下次扫描的事件号（即已有最大扫描次数+1）
         int scanEvent = dbHelper.getNextScanEventForRefPoint(currentRefPoint);
 
         for (ScanResult result : results) {
-            // 如果扫描到的 WiFi 信号强度大于等于阈值，则加入结果列表
             if (result.level >= MIN_RSSI_THRESHOLD) {
-                String info = "SSID: " + result.SSID
-                        + "\nBSSID: " + result.BSSID
-                        + "\nRSSI: " + result.level;
+                String info = "SSID: " + result.SSID +
+                        "\nBSSID: " + result.BSSID +
+                        "\nRSSI: " + result.level;
                 scanResultsList.add(info);
                 dbHelper.insertScanResult(currentRefPoint, scanEvent, result.SSID, result.BSSID, result.level);
             }
         }
         adapter.notifyDataSetChanged();
-
-
-        // 提示用户扫描完成，并显示保存的扫描次数
         Toast.makeText(getActivity(), "参考点 " + currentRefPoint + " 的第 " + scanEvent + " 次扫描已保存", Toast.LENGTH_SHORT).show();
     }
 }

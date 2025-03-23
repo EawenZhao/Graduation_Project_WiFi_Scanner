@@ -1,31 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="16dp"
+    android:id="@+id/fragment_scan_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="16dp">
 
+    <!-- 参考点输入框 -->
     <EditText
         android:id="@+id/editTextRefPoint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="?actionBarSize"
         android:hint="请输入参考点ID"
-        android:inputType="number" />
+        android:layout_marginTop="?actionBarSize"/>
 
+    <!-- 开始扫描按钮 -->
     <Button
         android:id="@+id/btnScan"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="扫描WiFi"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="20dp" />
+        android:text="开始扫描"
+        android:layout_below="@id/editTextRefPoint"
+        android:layout_marginTop="8dp"
+        android:layout_centerHorizontal="true"/>
 
+    <!-- 进度条 -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btnScan"
+        android:layout_marginTop="8dp"
+        android:max="30"
+        android:progress="0" />
+
+    <!-- 扫描结果列表 -->
     <ListView
         android:id="@+id/listView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp" />
+        android:layout_below="@id/progressBar"
+        android:layout_marginTop="8dp" />
 
-</LinearLayout>
+</RelativeLayout>
